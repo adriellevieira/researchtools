@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Pesquisas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #000;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .control-group input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #f9f9ff;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-add:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-delete {
+            background: #ff6b6b;
+            color: white;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .btn-delete:hover {
+            background: #ee5a52;
+        }
+
+        .btn-clear {
+            background: #ccc;
+            color: #333;
+        }
+
+        .btn-clear:hover {
+            background: #bbb;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        thead {
+            background: #000;
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            border: 1px solid #333;
+        }
+
+        td {
+            padding: 15px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        tbody tr:hover {
+            background: #f0f0f0;
+        }
+
+        .pesquisa-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .numeric-input {
+            width: 60px;
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .numeric-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #f9f9ff;
+        }
+
+        .total {
+            font-weight: 600;
+            color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .media-dias {
+            font-weight: 600;
+            color: white;
+            background: #000;
+            text-align: center;
+        }
+
+        .footer-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .action-column {
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 10px;
+            }
+
+            .numeric-input {
+                width: 50px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Calculadora de Pesquisas</h1>
+        </div>
+
+        <div class="content">
+            <div class="controls">
+                <div class="control-group">
+                    <label for="pesquisaName">Nome da Pesquisa</label>
+                    <input type="text" id="pesquisaName" placeholder="Ex: EST_OTT_041 Keymoments">
+                </div>
+                <div class="control-group">
+                    <label for="planejamento">Planejamento (dias)</label>
+                    <input type="number" id="planejamento" min="0" value="1">
+                </div>
+                <div class="control-group">
+                    <label for="execucao">Execução (dias)</label>
+                    <input type="number" id="execucao" min="0" value="1">
+                </div>
+                <div class="control-group">
+                    <label for="analise">Análise (dias)</label>
+                    <input type="number" id="analise" min="0" value="1">
+                </div>
+                <div class="control-group">
+                    <label for="documentacao">Documentação (dias)</label>
+                    <input type="number" id="documentacao" min="0" value="1">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-add" onclick="adicionarPesquisa()">+ Adicionar Pesquisa</button>
+                <button class="btn-clear" onclick="limparFormulario()">Limpar</button>
+                <button class="btn-clear" onclick="limparTudo()">Limpar Tudo</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pesquisa</th>
+                            <th style="text-align: center;">Planejamento</th>
+                            <th style="text-align: center;">Execução</th>
+                            <th style="text-align: center;">Análise</th>
+                            <th style="text-align: center;">Documentação</th>
+                            <th style="text-align: center;">Total</th>
+                            <th style="text-align: center;">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr class="empty-state">
+                            <td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="footer-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Total de Pesquisas</div>
+                    <div class="stat-value" id="totalPesquisas">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Total de Dias</div>
+                    <div class="stat-value" id="totalDias">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Média de Dias</div>
+                    <div class="stat-value" id="mediaDias">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Maior Pesquisa (dias)</div>
+                    <div class="stat-value" id="maiorPesquisa">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pesquisas = JSON.parse(localStorage.getItem('pesquisas')) || [];
+
+        function adicionarPesquisa() {
+            const nome = document.getElementById('pesquisaName').value.trim();
+            const planejamento = parseInt(document.getElementById('planejamento').value) || 0;
+            const execucao = parseInt(document.getElementById('execucao').value) || 0;
+            const analise = parseInt(document.getElementById('analise').value) || 0;
+            const documentacao = parseInt(document.getElementById('documentacao').value) || 0;
+
+            if (!nome) {
+                alert('Por favor, digite o nome da pesquisa');
+                return;
+            }
+
+            const pesquisa = {
+                id: Date.now(),
+                nome,
+                planejamento,
+                execucao,
+                analise,
+                documentacao
+            };
+
+            pesquisas.push(pesquisa);
+            salvarPesquisas();
+            renderizarTabela();
+            limparFormulario();
+        }
+
+        function deletarPesquisa(id) {
+            if (confirm('Tem certeza que deseja deletar esta pesquisa?')) {
+                pesquisas = pesquisas.filter(p => p.id !== id);
+                salvarPesquisas();
+                renderizarTabela();
+            }
+        }
+
+        function calcularTotal(pesquisa) {
+            return pesquisa.planejamento + pesquisa.execucao + pesquisa.analise + pesquisa.documentacao;
+        }
+
+        function renderizarTabela() {
+            const tbody = document.getElementById('tableBody');
+
+            if (pesquisas.length === 0) {
+                tbody.innerHTML = '<tr class="empty-state"><td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td></tr>';
+                atualizarEstatisticas();
+                return;
+            }
+
+            tbody.innerHTML = pesquisas.map(pesquisa => {
+                const total = calcularTotal(pesquisa);
+                return `
+                    <tr>
+                        <td class="pesquisa-name">${pesquisa.nome}</td>
+                        <td style="text-align: center;">${pesquisa.planejamento}</td>
+                        <td style="text-align: center;">${pesquisa.execucao}</td>
+                        <td style="text-align: center;">${pesquisa.analise}</td>
+                        <td style="text-align: center;">${pesquisa.documentacao}</td>
+                        <td style="text-align: center;" class="total">${total}</td>
+                        <td style="text-align: center;" class="action-column">
+                            <button class="btn-delete" onclick="deletarPesquisa(${pesquisa.id})">Deletar</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            atualizarEstatisticas();
+        }
+
+        function atualizarEstatisticas() {
+            const total = pesquisas.length;
+            const totalDias = pesquisas.reduce((sum, p) => sum + calcularTotal(p), 0);
+            const media = total > 0 ? Math.round(totalDias / total) : 0;
+            const maior = total > 0 ? Math.max(...pesquisas.map(p => calcularTotal(p))) : 0;
+
+            document.getElementById('totalPesquisas').textContent = total;
+            document.getElementById('totalDias').textContent = totalDias;
+            document.getElementById('mediaDias').textContent = media;
+            document.getElementById('maiorPesquisa').textContent = maior;
+        }
+
+        function limparFormulario() {
+            document.getElementById('pesquisaName').value = '';
+            document.getElementById('planejamento').value = '1';
+            document.getElementById('execucao').value = '1';
+            document.getElementById('analise').value = '1';
+            document.getElementById('documentacao').value = '1';
+            document.getElementById('pesquisaName').focus();
+        }
+
+        function limparTudo() {
+            if (confirm('Tem certeza que deseja deletar TODAS as pesquisas? Esta ação não pode ser desfeita.')) {
+                pesquisas = [];
+                salvarPesquisas();
+                renderizarTabela();
+                limparFormulario();
+            }
+        }
+
+        function salvarPesquisas() {
+            localStorage.setItem('pesquisas', JSON.stringify(pesquisas));
+        }
+
+        // Inicializar
+        renderizarTabela();
+        limparFormulario();
+    </script>
+</body>
+</html>
