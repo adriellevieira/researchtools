@@ -255,16 +255,6 @@
             font-size: 16px;
         }
 
-        .loading-spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #ccc;
-            border-radius: 50%;
-            border-top-color: #2c3e8f;
-            animation: spin 0.8s linear infinite;
-        }
-
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -345,7 +335,7 @@
                     </thead>
                     <tbody id="tableBody">
                         <tr class="empty-state">
-                            <td colspan="7"><p>Carregando dados...</p></td>
+                            <td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td>
                         </tr>
                     </tbody>
                 </table>
@@ -373,151 +363,191 @@
     </div>
 
     <script>
-        // Inicializar Firebase
+        // Inicializar Firebase com credenciais completas
         const firebaseConfig = {
-            databaseURL: "https://researchtools-cce6d-default-rtdb.firebaseio.com/"
+            apiKey: "AIzaSyCZ52SFgZk31CscBoA2eccJ7guDslXjduU",
+            authDomain: "researchtools-cce6d.firebaseapp.com",
+            databaseURL: "https://researchtools-cce6d-default-rtdb.firebaseio.com",
+            projectId: "researchtools-cce6d",
+            storageBucket: "researchtools-cce6d.firebasestorage.app",
+            messagingSenderId: "29747097211",
+            appId: "1:29747097211:web:735572115a7d4de96bfcde",
+            measurementId: "G-Y5EMJRJ42H"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const pesquisasRef = db.ref('pesquisas');
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.database();
+            const pesquisasRef = db.ref('pesquisas');
 
-        let pesquisas = {};
+            let pesquisas = {};
+            let initialLoadDone = false;
 
-        // Carregar dados do Firebase em tempo real
-        pesquisasRef.on('value', (snapshot) => {
-            pesquisas = snapshot.val() || {};
-            renderizarTabela();
-        });
+            // Carregar dados uma vez no inicio
+            pesquisasRef.once('value', (snapshot) => {
+                pesquisas = snapshot.val() || {};
+                renderizarTabela();
+                initialLoadDone = true;
 
-        function mostrarStatus(mensagem, tipo) {
-            const statusDiv = document.getElementById('statusMessage');
-            statusDiv.textContent = mensagem;
-            statusDiv.className = `status-message ${tipo}`;
-            setTimeout(() => {
-                statusDiv.className = 'status-message';
-            }, 3000);
-        }
-
-        function adicionarPesquisa() {
-            const nome = document.getElementById('pesquisaName').value.trim();
-            const planejamento = parseInt(document.getElementById('planejamento').value) || 0;
-            const execucao = parseInt(document.getElementById('execucao').value) || 0;
-            const analise = parseInt(document.getElementById('analise').value) || 0;
-            const documentacao = parseInt(document.getElementById('documentacao').value) || 0;
-
-            if (!nome) {
-                mostrarStatus('Por favor, digite o nome da pesquisa', 'error');
-                return;
-            }
-
-            const btnAdicionar = document.getElementById('btnAdicionar');
-            btnAdicionar.disabled = true;
-
-            const id = Date.now().toString();
-            const pesquisa = {
-                nome,
-                planejamento,
-                execucao,
-                analise,
-                documentacao
-            };
-
-            pesquisasRef.child(id).set(pesquisa)
-                .then(() => {
-                    mostrarStatus('✓ Pesquisa adicionada com sucesso!', 'success');
-                    limparFormulario();
-                    btnAdicionar.disabled = false;
-                })
-                .catch((error) => {
-                    mostrarStatus('✗ Erro ao adicionar: ' + error.message, 'error');
-                    btnAdicionar.disabled = false;
+                // Depois, escutar mudanças em tempo real
+                pesquisasRef.on('child_added', (snapshot) => {
+                    if (initialLoadDone) {
+                        pesquisas[snapshot.key] = snapshot.val();
+                        renderizarTabela();
+                    }
                 });
-        }
 
-        function deletarPesquisa(id) {
-            if (confirm('Tem certeza que deseja deletar esta pesquisa?')) {
-                pesquisasRef.child(id).remove()
-                    .then(() => {
-                        mostrarStatus('✓ Pesquisa deletada!', 'success');
-                    })
-                    .catch((error) => {
-                        mostrarStatus('✗ Erro ao deletar: ' + error.message, 'error');
-                    });
+                pesquisasRef.on('child_removed', (snapshot) => {
+                    if (initialLoadDone) {
+                        delete pesquisas[snapshot.key];
+                        renderizarTabela();
+                    }
+                });
+
+                pesquisasRef.on('child_changed', (snapshot) => {
+                    if (initialLoadDone) {
+                        pesquisas[snapshot.key] = snapshot.val();
+                        renderizarTabela();
+                    }
+                });
+            }).catch((error) => {
+                mostrarStatus('✗ Erro ao conectar: ' + error.message, 'error');
+            });
+
+            function mostrarStatus(mensagem, tipo) {
+                const statusDiv = document.getElementById('statusMessage');
+                statusDiv.textContent = mensagem;
+                statusDiv.className = `status-message ${tipo}`;
+                setTimeout(() => {
+                    statusDiv.className = 'status-message';
+                }, 3000);
             }
-        }
 
-        function calcularTotal(pesquisa) {
-            return pesquisa.planejamento + pesquisa.execucao + pesquisa.analise + pesquisa.documentacao;
-        }
+            function adicionarPesquisa() {
+                const nome = document.getElementById('pesquisaName').value.trim();
+                const planejamento = parseInt(document.getElementById('planejamento').value) || 0;
+                const execucao = parseInt(document.getElementById('execucao').value) || 0;
+                const analise = parseInt(document.getElementById('analise').value) || 0;
+                const documentacao = parseInt(document.getElementById('documentacao').value) || 0;
 
-        function renderizarTabela() {
-            const tbody = document.getElementById('tableBody');
-            const pesquisasArray = Object.entries(pesquisas);
+                if (!nome) {
+                    mostrarStatus('Por favor, digite o nome da pesquisa', 'error');
+                    return;
+                }
 
-            if (pesquisasArray.length === 0) {
-                tbody.innerHTML = '<tr class="empty-state"><td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td></tr>';
-                atualizarEstatisticas();
-                return;
-            }
+                const btnAdicionar = document.getElementById('btnAdicionar');
+                btnAdicionar.disabled = true;
 
-            tbody.innerHTML = pesquisasArray.map(([id, pesquisa]) => {
-                const total = calcularTotal(pesquisa);
-                return `
-                    <tr>
-                        <td class="pesquisa-name">${pesquisa.nome}</td>
-                        <td style="text-align: center;">${pesquisa.planejamento}</td>
-                        <td style="text-align: center;">${pesquisa.execucao}</td>
-                        <td style="text-align: center;">${pesquisa.analise}</td>
-                        <td style="text-align: center;">${pesquisa.documentacao}</td>
-                        <td style="text-align: center;" class="total">${total}</td>
-                        <td style="text-align: center;" class="action-column">
-                            <button class="btn-delete" onclick="deletarPesquisa('${id}')">Deletar</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                const id = Date.now().toString();
+                const pesquisa = {
+                    nome,
+                    planejamento,
+                    execucao,
+                    analise,
+                    documentacao
+                };
 
-            atualizarEstatisticas();
-        }
-
-        function atualizarEstatisticas() {
-            const pesquisasArray = Object.values(pesquisas);
-            const total = pesquisasArray.length;
-            const totalDias = pesquisasArray.reduce((sum, p) => sum + calcularTotal(p), 0);
-            const media = total > 0 ? Math.round(totalDias / total) : 0;
-            const maior = total > 0 ? Math.max(...pesquisasArray.map(p => calcularTotal(p))) : 0;
-
-            document.getElementById('totalPesquisas').textContent = total;
-            document.getElementById('totalDias').textContent = totalDias;
-            document.getElementById('mediaDias').textContent = media;
-            document.getElementById('maiorPesquisa').textContent = maior;
-        }
-
-        function limparFormulario() {
-            document.getElementById('pesquisaName').value = '';
-            document.getElementById('planejamento').value = '1';
-            document.getElementById('execucao').value = '1';
-            document.getElementById('analise').value = '1';
-            document.getElementById('documentacao').value = '1';
-            document.getElementById('pesquisaName').focus();
-        }
-
-        function limparTudo() {
-            if (confirm('Tem certeza que deseja deletar TODAS as pesquisas? Esta ação não pode ser desfeita.')) {
-                pesquisasRef.remove()
+                pesquisasRef.child(id).set(pesquisa)
                     .then(() => {
-                        mostrarStatus('✓ Todas as pesquisas foram deletadas!', 'success');
+                        mostrarStatus('✓ Pesquisa adicionada com sucesso!', 'success');
                         limparFormulario();
+                        btnAdicionar.disabled = false;
                     })
                     .catch((error) => {
-                        mostrarStatus('✗ Erro ao limpar: ' + error.message, 'error');
+                        mostrarStatus('✗ Erro ao adicionar: ' + error.message, 'error');
+                        btnAdicionar.disabled = false;
                     });
             }
-        }
 
-        // Inicializar
-        limparFormulario();
+            function deletarPesquisa(id) {
+                if (confirm('Tem certeza que deseja deletar esta pesquisa?')) {
+                    pesquisasRef.child(id).remove()
+                        .then(() => {
+                            mostrarStatus('✓ Pesquisa deletada!', 'success');
+                        })
+                        .catch((error) => {
+                            mostrarStatus('✗ Erro ao deletar: ' + error.message, 'error');
+                        });
+                }
+            }
+
+            function calcularTotal(pesquisa) {
+                return pesquisa.planejamento + pesquisa.execucao + pesquisa.analise + pesquisa.documentacao;
+            }
+
+            function renderizarTabela() {
+                const tbody = document.getElementById('tableBody');
+                const pesquisasArray = Object.entries(pesquisas);
+
+                if (pesquisasArray.length === 0) {
+                    tbody.innerHTML = '<tr class="empty-state"><td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td></tr>';
+                    atualizarEstatisticas();
+                    return;
+                }
+
+                tbody.innerHTML = pesquisasArray.map(([id, pesquisa]) => {
+                    const total = calcularTotal(pesquisa);
+                    return `
+                        <tr>
+                            <td class="pesquisa-name">${pesquisa.nome}</td>
+                            <td style="text-align: center;">${pesquisa.planejamento}</td>
+                            <td style="text-align: center;">${pesquisa.execucao}</td>
+                            <td style="text-align: center;">${pesquisa.analise}</td>
+                            <td style="text-align: center;">${pesquisa.documentacao}</td>
+                            <td style="text-align: center;" class="total">${total}</td>
+                            <td style="text-align: center;" class="action-column">
+                                <button class="btn-delete" onclick="deletarPesquisa('${id}')">Deletar</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                atualizarEstatisticas();
+            }
+
+            function atualizarEstatisticas() {
+                const pesquisasArray = Object.values(pesquisas);
+                const total = pesquisasArray.length;
+                const totalDias = pesquisasArray.reduce((sum, p) => sum + calcularTotal(p), 0);
+                const media = total > 0 ? Math.round(totalDias / total) : 0;
+                const maior = total > 0 ? Math.max(...pesquisasArray.map(p => calcularTotal(p))) : 0;
+
+                document.getElementById('totalPesquisas').textContent = total;
+                document.getElementById('totalDias').textContent = totalDias;
+                document.getElementById('mediaDias').textContent = media;
+                document.getElementById('maiorPesquisa').textContent = maior;
+            }
+
+            function limparFormulario() {
+                document.getElementById('pesquisaName').value = '';
+                document.getElementById('planejamento').value = '1';
+                document.getElementById('execucao').value = '1';
+                document.getElementById('analise').value = '1';
+                document.getElementById('documentacao').value = '1';
+                document.getElementById('pesquisaName').focus();
+            }
+
+            function limparTudo() {
+                if (confirm('Tem certeza que deseja deletar TODAS as pesquisas? Esta ação não pode ser desfeita.')) {
+                    pesquisasRef.remove()
+                        .then(() => {
+                            mostrarStatus('✓ Todas as pesquisas foram deletadas!', 'success');
+                            limparFormulario();
+                        })
+                        .catch((error) => {
+                            mostrarStatus('✗ Erro ao limpar: ' + error.message, 'error');
+                        });
+                }
+            }
+
+            // Inicializar
+            limparFormulario();
+
+        } catch (error) {
+            console.error('Erro ao inicializar Firebase:', error);
+            document.getElementById('statusMessage').textContent = 'Erro ao conectar ao Firebase';
+            document.getElementById('statusMessage').className = 'status-message error';
+        }
     </script>
 </body>
 </html>
