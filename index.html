@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora de Pesquisas</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
     <style>
         * {
             margin: 0;
@@ -13,7 +15,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #e8e8e8;
             min-height: 100vh;
             padding: 20px;
         }
@@ -23,7 +25,7 @@
             margin: 0 auto;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
 
@@ -39,6 +41,12 @@
             font-weight: 600;
         }
 
+        .header p {
+            font-size: 13px;
+            margin-top: 8px;
+            opacity: 0.8;
+        }
+
         .content {
             padding: 30px;
         }
@@ -47,9 +55,9 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             padding: 20px;
-            background: #f5f5f5;
+            background: #f8f8f8;
             border-radius: 8px;
         }
 
@@ -81,9 +89,10 @@
 
         .button-group {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             justify-content: flex-end;
-            margin-top: 20px;
+            margin-top: 25px;
+            flex-wrap: wrap;
         }
 
         button {
@@ -99,12 +108,20 @@
         .btn-add {
             background: #667eea;
             color: white;
+            flex: 1;
+            min-width: 180px;
         }
 
         .btn-add:hover {
             background: #5568d3;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-add:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .btn-delete {
@@ -119,22 +136,52 @@
         }
 
         .btn-clear {
-            background: #ccc;
+            background: #e0e0e0;
             color: #333;
+            min-width: 100px;
         }
 
         .btn-clear:hover {
-            background: #bbb;
+            background: #d0d0d0;
+        }
+
+        .status-message {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status-message.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
         }
 
         .table-wrapper {
             overflow-x: auto;
+            margin-bottom: 20px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
         }
 
         thead {
@@ -169,41 +216,18 @@
             color: #333;
         }
 
-        .numeric-input {
-            width: 60px;
-            padding: 8px;
-            text-align: center;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-
-        .numeric-input:focus {
-            outline: none;
-            border-color: #667eea;
-            background: #f9f9ff;
-        }
-
         .total {
             font-weight: 600;
             color: #667eea;
             background: #f0f0ff;
         }
 
-        .media-dias {
-            font-weight: 600;
-            color: white;
-            background: #000;
-            text-align: center;
-        }
-
         .footer-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
-            margin-top: 30px;
             padding: 20px;
-            background: #f5f5f5;
+            background: #f8f8f8;
             border-radius: 8px;
         }
 
@@ -238,6 +262,20 @@
             font-size: 16px;
         }
 
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 768px) {
             .controls {
                 grid-template-columns: 1fr;
@@ -258,11 +296,6 @@
             th, td {
                 padding: 10px;
             }
-
-            .numeric-input {
-                width: 50px;
-                font-size: 12px;
-            }
         }
     </style>
 </head>
@@ -270,9 +303,12 @@
     <div class="container">
         <div class="header">
             <h1>Calculadora de Pesquisas</h1>
+            <p>Dados compartilhados e salvos em tempo real</p>
         </div>
 
         <div class="content">
+            <div id="statusMessage" class="status-message"></div>
+
             <div class="controls">
                 <div class="control-group">
                     <label for="pesquisaName">Nome da Pesquisa</label>
@@ -297,7 +333,7 @@
             </div>
 
             <div class="button-group">
-                <button class="btn-add" onclick="adicionarPesquisa()">+ Adicionar Pesquisa</button>
+                <button class="btn-add" id="btnAdicionar" onclick="adicionarPesquisa()">+ Adicionar Pesquisa</button>
                 <button class="btn-clear" onclick="limparFormulario()">Limpar</button>
                 <button class="btn-clear" onclick="limparTudo()">Limpar Tudo</button>
             </div>
@@ -317,7 +353,7 @@
                     </thead>
                     <tbody id="tableBody">
                         <tr class="empty-state">
-                            <td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td>
+                            <td colspan="7"><p>Carregando dados...</p></td>
                         </tr>
                     </tbody>
                 </table>
@@ -345,7 +381,31 @@
     </div>
 
     <script>
-        let pesquisas = JSON.parse(localStorage.getItem('pesquisas')) || [];
+        // Inicializar Firebase
+        const firebaseConfig = {
+            databaseURL: "https://researchtools-cce6d-default-rtdb.firebaseio.com/"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const pesquisasRef = db.ref('pesquisas');
+
+        let pesquisas = {};
+
+        // Carregar dados do Firebase em tempo real
+        pesquisasRef.on('value', (snapshot) => {
+            pesquisas = snapshot.val() || {};
+            renderizarTabela();
+        });
+
+        function mostrarStatus(mensagem, tipo) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = mensagem;
+            statusDiv.className = `status-message ${tipo}`;
+            setTimeout(() => {
+                statusDiv.className = 'status-message';
+            }, 3000);
+        }
 
         function adicionarPesquisa() {
             const nome = document.getElementById('pesquisaName').value.trim();
@@ -355,12 +415,15 @@
             const documentacao = parseInt(document.getElementById('documentacao').value) || 0;
 
             if (!nome) {
-                alert('Por favor, digite o nome da pesquisa');
+                mostrarStatus('Por favor, digite o nome da pesquisa', 'error');
                 return;
             }
 
+            const btnAdicionar = document.getElementById('btnAdicionar');
+            btnAdicionar.disabled = true;
+
+            const id = Date.now().toString();
             const pesquisa = {
-                id: Date.now(),
                 nome,
                 planejamento,
                 execucao,
@@ -368,17 +431,27 @@
                 documentacao
             };
 
-            pesquisas.push(pesquisa);
-            salvarPesquisas();
-            renderizarTabela();
-            limparFormulario();
+            pesquisasRef.child(id).set(pesquisa)
+                .then(() => {
+                    mostrarStatus('✓ Pesquisa adicionada com sucesso!', 'success');
+                    limparFormulario();
+                    btnAdicionar.disabled = false;
+                })
+                .catch((error) => {
+                    mostrarStatus('✗ Erro ao adicionar: ' + error.message, 'error');
+                    btnAdicionar.disabled = false;
+                });
         }
 
         function deletarPesquisa(id) {
             if (confirm('Tem certeza que deseja deletar esta pesquisa?')) {
-                pesquisas = pesquisas.filter(p => p.id !== id);
-                salvarPesquisas();
-                renderizarTabela();
+                pesquisasRef.child(id).remove()
+                    .then(() => {
+                        mostrarStatus('✓ Pesquisa deletada!', 'success');
+                    })
+                    .catch((error) => {
+                        mostrarStatus('✗ Erro ao deletar: ' + error.message, 'error');
+                    });
             }
         }
 
@@ -388,14 +461,15 @@
 
         function renderizarTabela() {
             const tbody = document.getElementById('tableBody');
+            const pesquisasArray = Object.entries(pesquisas);
 
-            if (pesquisas.length === 0) {
+            if (pesquisasArray.length === 0) {
                 tbody.innerHTML = '<tr class="empty-state"><td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td></tr>';
                 atualizarEstatisticas();
                 return;
             }
 
-            tbody.innerHTML = pesquisas.map(pesquisa => {
+            tbody.innerHTML = pesquisasArray.map(([id, pesquisa]) => {
                 const total = calcularTotal(pesquisa);
                 return `
                     <tr>
@@ -406,7 +480,7 @@
                         <td style="text-align: center;">${pesquisa.documentacao}</td>
                         <td style="text-align: center;" class="total">${total}</td>
                         <td style="text-align: center;" class="action-column">
-                            <button class="btn-delete" onclick="deletarPesquisa(${pesquisa.id})">Deletar</button>
+                            <button class="btn-delete" onclick="deletarPesquisa('${id}')">Deletar</button>
                         </td>
                     </tr>
                 `;
@@ -416,10 +490,11 @@
         }
 
         function atualizarEstatisticas() {
-            const total = pesquisas.length;
-            const totalDias = pesquisas.reduce((sum, p) => sum + calcularTotal(p), 0);
+            const pesquisasArray = Object.values(pesquisas);
+            const total = pesquisasArray.length;
+            const totalDias = pesquisasArray.reduce((sum, p) => sum + calcularTotal(p), 0);
             const media = total > 0 ? Math.round(totalDias / total) : 0;
-            const maior = total > 0 ? Math.max(...pesquisas.map(p => calcularTotal(p))) : 0;
+            const maior = total > 0 ? Math.max(...pesquisasArray.map(p => calcularTotal(p))) : 0;
 
             document.getElementById('totalPesquisas').textContent = total;
             document.getElementById('totalDias').textContent = totalDias;
@@ -438,19 +513,18 @@
 
         function limparTudo() {
             if (confirm('Tem certeza que deseja deletar TODAS as pesquisas? Esta ação não pode ser desfeita.')) {
-                pesquisas = [];
-                salvarPesquisas();
-                renderizarTabela();
-                limparFormulario();
+                pesquisasRef.remove()
+                    .then(() => {
+                        mostrarStatus('✓ Todas as pesquisas foram deletadas!', 'success');
+                        limparFormulario();
+                    })
+                    .catch((error) => {
+                        mostrarStatus('✗ Erro ao limpar: ' + error.message, 'error');
+                    });
             }
         }
 
-        function salvarPesquisas() {
-            localStorage.setItem('pesquisas', JSON.stringify(pesquisas));
-        }
-
         // Inicializar
-        renderizarTabela();
         limparFormulario();
     </script>
 </body>
