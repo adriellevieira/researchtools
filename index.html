@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Pesquisas</title>
+    <title>Calculadora de Métricas</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -14,134 +15,381 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #e8e8e8;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
             min-height: 100vh;
-            padding: 20px;
+            padding: 40px 20px;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
         }
 
         .header {
-            background: #000;
-            color: white;
-            padding: 30px;
-            text-align: center;
+            margin-bottom: 40px;
         }
 
-        .header h1 {
-            font-size: 28px;
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .breadcrumb {
+            font-size: 12px;
+            color: #2c3e8f;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #000;
+        }
+
+        .firebase-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #27ae60;
             font-weight: 600;
         }
 
-        .content {
-            padding: 30px;
+        .firebase-status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #27ae60;
+            border-radius: 50%;
+            display: inline-block;
         }
 
-        .controls {
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 40px;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tab.active {
+            color: #2c3e8f;
+            border-bottom-color: #2c3e8f;
+        }
+
+        .tab:hover {
+            color: #2c3e8f;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-            padding: 20px;
-            background: #f8f8f8;
-            border-radius: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
         }
 
-        .control-group {
+        .metric-card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            border-left: 4px solid #2c3e8f;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #999;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #2c3e8f;
+            margin-bottom: 5px;
+        }
+
+        .metric-subtitle {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #333;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        .distribution-chart {
+            display: grid;
+            gap: 20px;
+        }
+
+        .distribution-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .distribution-label {
+            min-width: 150px;
+            font-size: 13px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .distribution-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .distribution-fill {
+            height: 100%;
+            background: #2c3e8f;
+            border-radius: 4px;
+        }
+
+        .distribution-value {
+            min-width: 100px;
+            text-align: right;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c3e8f;
+        }
+
+        .distribution-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .distribution-sum {
+            text-align: center;
+        }
+
+        .distribution-sum-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .distribution-sum-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e8f;
+        }
+
+        .form-section {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #333;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .form-group {
             display: flex;
             flex-direction: column;
         }
 
-        .control-group label {
-            font-size: 14px;
+        .form-group label {
+            font-size: 12px;
             font-weight: 600;
-            margin-bottom: 8px;
             color: #333;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .control-group input {
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.3s;
+        .form-group input {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
         }
 
-        .control-group input:focus {
+        .form-group input:focus {
             outline: none;
             border-color: #2c3e8f;
             background: #f9f9ff;
         }
 
-        .button-group {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin-top: 25px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            flex: 1;
-            min-width: 140px;
-        }
-
-        .btn-add {
+        .btn-adicionar {
             background: #2c3e8f;
             color: white;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s;
+            align-self: flex-end;
         }
 
-        .btn-add:hover {
+        .btn-adicionar:hover {
             background: #1f2a5f;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(44, 62, 143, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(44, 62, 143, 0.3);
         }
 
-        .btn-add:disabled {
+        .btn-adicionar:disabled {
             background: #ccc;
             cursor: not-allowed;
             transform: none;
         }
 
-        .btn-delete {
-            background: #ff6b6b;
-            color: white;
-            padding: 8px 12px;
+        .table-section {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .table-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #333;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f9f9f9;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
             font-size: 12px;
+            font-weight: 700;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e0e0e0;
         }
 
-        .btn-delete:hover {
-            background: #ee5a52;
-        }
-
-        .btn-clear {
-            background: #e0e0e0;
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 13px;
             color: #333;
         }
 
-        .btn-clear:hover {
-            background: #d0d0d0;
+        tr:hover {
+            background: #fafafa;
+        }
+
+        .table-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0 8px;
+        }
+
+        .btn-delete:hover {
+            color: #c0392b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state p {
+            font-size: 14px;
         }
 
         .status-message {
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 6px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
             font-size: 13px;
             display: none;
         }
@@ -160,116 +408,13 @@
             display: block;
         }
 
-        .status-message.loading {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-            display: block;
-        }
-
-        .table-wrapper {
-            overflow-x: auto;
-            margin-bottom: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background: #000;
-            color: white;
-        }
-
-        th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 14px;
-            border: 1px solid #333;
-        }
-
-        td {
-            padding: 15px;
-            border: 1px solid #ddd;
-            font-size: 14px;
-        }
-
-        tbody tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-
-        tbody tr:hover {
-            background: #f0f0f0;
-        }
-
-        .pesquisa-name {
-            font-weight: 500;
-            color: #333;
-        }
-
-        .total {
-            font-weight: 600;
-            color: #2c3e8f;
-            background: #f0f0ff;
-        }
-
-        .footer-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            padding: 20px;
-            background: #f8f8f8;
-            border-radius: 8px;
-        }
-
-        .stat-box {
-            text-align: center;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-size: 28px;
-            font-weight: 700;
-            color: #2c3e8f;
-        }
-
-        .action-column {
-            text-align: center;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-
-        .empty-state p {
-            font-size: 16px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         @media (max-width: 768px) {
-            .controls {
+            .form-row {
                 grid-template-columns: 1fr;
             }
 
-            .button-group {
-                flex-direction: column;
-            }
-
-            button {
-                width: 100%;
+            .distribution-summary {
+                grid-template-columns: repeat(2, 1fr);
             }
 
             table {
@@ -285,85 +430,166 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Calculadora de Pesquisas</h1>
+            <div class="header-top">
+                <div class="header-title">
+                    <div>
+                        <div class="breadcrumb">RESEARCH OPS</div>
+                        <h1>Calculadora de Métricas</h1>
+                    </div>
+                </div>
+                <div class="firebase-status">Firebase</div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="mudarAba('execucao')">01 EXECUÇÃO DE PESQUISA</button>
+                <button class="tab" onclick="mudarAba('recrutamento')">02 TEMPO DE RECRUTAMENTO</button>
+                <button class="tab" onclick="mudarAba('comparecimento')">03 TAXA DE NÃO COMPARECIMENTO</button>
+            </div>
         </div>
 
-        <div class="content">
-            <div id="statusMessage" class="status-message"></div>
+        <div id="statusMessage" class="status-message"></div>
 
-            <div class="controls">
-                <div class="control-group">
-                    <label for="pesquisaName">Nome da Pesquisa</label>
-                    <input type="text" id="pesquisaName" placeholder="Ex: EST_OTT_041 Keymoments">
+        <!-- ABA 1: EXECUÇÃO DE PESQUISA -->
+        <div id="aba-execucao" class="tab-content active">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Duração Média por Pesquisa</div>
+                    <div class="metric-value" id="mediaDuracao">0</div>
+                    <div class="metric-subtitle" id="subtitlePesquisas">0 pesquisas registradas</div>
                 </div>
-                <div class="control-group">
-                    <label for="planejamento">Planejamento (dias)</label>
-                    <input type="number" id="planejamento" min="0" value="1">
-                </div>
-                <div class="control-group">
-                    <label for="execucao">Execução (dias)</label>
-                    <input type="number" id="execucao" min="0" value="1">
-                </div>
-                <div class="control-group">
-                    <label for="analise">Análise (dias)</label>
-                    <input type="number" id="analise" min="0" value="1">
-                </div>
-                <div class="control-group">
-                    <label for="documentacao">Documentação (dias)</label>
-                    <input type="number" id="documentacao" min="0" value="1">
+                <div class="metric-card">
+                    <div class="metric-label">Pesquisas Registradas</div>
+                    <div class="metric-value" id="totalPesquisas">0</div>
+                    <div class="metric-subtitle">Total no sistema</div>
                 </div>
             </div>
 
-            <div class="button-group">
-                <button class="btn-add" id="btnAdicionar" onclick="adicionarPesquisa()">+ Adicionar Pesquisa</button>
-                <button class="btn-clear" onclick="limparFormulario()">Limpar</button>
-                <button class="btn-clear" onclick="limparTudo()">Deletar Todos</button>
+            <div class="chart-container">
+                <div class="chart-title">Distribuição Média por Fase</div>
+                <div class="distribution-chart">
+                    <div class="distribution-item">
+                        <div class="distribution-label">Planejamento</div>
+                        <div class="distribution-bar">
+                            <div class="distribution-fill" id="barPlanejamento" style="width: 0%"></div>
+                        </div>
+                        <div class="distribution-value" id="valuePlanejamento">0 d</div>
+                    </div>
+                    <div class="distribution-item">
+                        <div class="distribution-label">Execução</div>
+                        <div class="distribution-bar">
+                            <div class="distribution-fill" id="barExecucao" style="width: 0%"></div>
+                        </div>
+                        <div class="distribution-value" id="valueExecucao">0 d</div>
+                    </div>
+                    <div class="distribution-item">
+                        <div class="distribution-label">Análise e Síntese</div>
+                        <div class="distribution-bar">
+                            <div class="distribution-fill" id="barAnalise" style="width: 0%"></div>
+                        </div>
+                        <div class="distribution-value" id="valueAnalise">0 d</div>
+                    </div>
+                    <div class="distribution-item">
+                        <div class="distribution-label">Documentação</div>
+                        <div class="distribution-bar">
+                            <div class="distribution-fill" id="barDocumentacao" style="width: 0%"></div>
+                        </div>
+                        <div class="distribution-value" id="valueDocumentacao">0 d</div>
+                    </div>
+
+                    <div class="distribution-summary">
+                        <div class="distribution-sum">
+                            <div class="distribution-sum-label">Planejamento</div>
+                            <div class="distribution-sum-value" id="sumPlanejamento">0.0</div>
+                            <div style="font-size: 11px; color: #999;">dias</div>
+                        </div>
+                        <div class="distribution-sum">
+                            <div class="distribution-sum-label">Execução</div>
+                            <div class="distribution-sum-value" id="sumExecucao">0.0</div>
+                            <div style="font-size: 11px; color: #999;">dias</div>
+                        </div>
+                        <div class="distribution-sum">
+                            <div class="distribution-sum-label">Análise e Síntese</div>
+                            <div class="distribution-sum-value" id="sumAnalise">0.0</div>
+                            <div style="font-size: 11px; color: #999;">dias</div>
+                        </div>
+                        <div class="distribution-sum">
+                            <div class="distribution-sum-label">Documentação</div>
+                            <div class="distribution-sum-value" id="sumDocumentacao">0.0</div>
+                            <div style="font-size: 11px; color: #999;">dias</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="table-wrapper">
+            <div class="form-section">
+                <div class="form-title">Adicionar Pesquisa</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" id="pesquisaName" placeholder="Ex: OTT_EST_041">
+                    </div>
+                    <div class="form-group">
+                        <label>Planejamento</label>
+                        <input type="number" id="planejamento" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Execução</label>
+                        <input type="number" id="execucao" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Análise</label>
+                        <input type="number" id="analise" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Documentação</label>
+                        <input type="number" id="documentacao" min="0" value="0">
+                    </div>
+                    <button class="btn-adicionar" id="btnAdicionar" onclick="adicionarPesquisa()">Adicionar</button>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="table-title">Pesquisas Registradas</div>
                 <table>
                     <thead>
                         <tr>
-                            <th>Pesquisa</th>
-                            <th style="text-align: center;">Planejamento</th>
-                            <th style="text-align: center;">Execução</th>
-                            <th style="text-align: center;">Análise</th>
-                            <th style="text-align: center;">Documentação</th>
-                            <th style="text-align: center;">Total</th>
-                            <th style="text-align: center;">Ação</th>
+                            <th style="width: 30px;"></th>
+                            <th>Nome</th>
+                            <th>Planejamento</th>
+                            <th>Execução</th>
+                            <th>Análise e Síntese</th>
+                            <th>Documentação</th>
+                            <th>Total</th>
+                            <th style="width: 50px;"></th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
                         <tr class="empty-state">
-                            <td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td>
+                            <td colspan="8"><p>Nenhuma pesquisa adicionada ainda</p></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+        </div>
 
-            <div class="footer-stats">
-                <div class="stat-box">
-                    <div class="stat-label">Total de Pesquisas</div>
-                    <div class="stat-value" id="totalPesquisas">0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Total de Dias</div>
-                    <div class="stat-value" id="totalDias">0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Média de Dias</div>
-                    <div class="stat-value" id="mediaDias">0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Maior Pesquisa (dias)</div>
-                    <div class="stat-value" id="maiorPesquisa">0</div>
-                </div>
+        <!-- ABA 2 e 3: Placeholder -->
+        <div id="aba-recrutamento" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">Em breve...</div>
+                <p style="color: #999;">Funcionalidade em desenvolvimento</p>
+            </div>
+        </div>
+
+        <div id="aba-comparecimento" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">Em breve...</div>
+                <p style="color: #999;">Funcionalidade em desenvolvimento</p>
             </div>
         </div>
     </div>
 
     <script>
-        // Inicializar Firebase com credenciais completas
+        // Inicializar Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCZ52SFgZk31CscBoA2eccJ7guDslXjduU",
             authDomain: "researchtools-cce6d.firebaseapp.com",
@@ -387,6 +613,7 @@
             pesquisasRef.once('value', (snapshot) => {
                 pesquisas = snapshot.val() || {};
                 renderizarTabela();
+                atualizarMetricas();
                 initialLoadDone = true;
 
                 // Depois, escutar mudanças em tempo real
@@ -394,6 +621,7 @@
                     if (initialLoadDone) {
                         pesquisas[snapshot.key] = snapshot.val();
                         renderizarTabela();
+                        atualizarMetricas();
                     }
                 });
 
@@ -401,6 +629,7 @@
                     if (initialLoadDone) {
                         delete pesquisas[snapshot.key];
                         renderizarTabela();
+                        atualizarMetricas();
                     }
                 });
 
@@ -408,6 +637,7 @@
                     if (initialLoadDone) {
                         pesquisas[snapshot.key] = snapshot.val();
                         renderizarTabela();
+                        atualizarMetricas();
                     }
                 });
             }).catch((error) => {
@@ -480,8 +710,7 @@
                 const pesquisasArray = Object.entries(pesquisas);
 
                 if (pesquisasArray.length === 0) {
-                    tbody.innerHTML = '<tr class="empty-state"><td colspan="7"><p>Nenhuma pesquisa adicionada ainda</p></td></tr>';
-                    atualizarEstatisticas();
+                    tbody.innerHTML = '<tr class="empty-state"><td colspan="8"><p>Nenhuma pesquisa adicionada ainda</p></td></tr>';
                     return;
                 }
 
@@ -489,55 +718,81 @@
                     const total = calcularTotal(pesquisa);
                     return `
                         <tr>
-                            <td class="pesquisa-name">${pesquisa.nome}</td>
-                            <td style="text-align: center;">${pesquisa.planejamento}</td>
-                            <td style="text-align: center;">${pesquisa.execucao}</td>
-                            <td style="text-align: center;">${pesquisa.analise}</td>
-                            <td style="text-align: center;">${pesquisa.documentacao}</td>
-                            <td style="text-align: center;" class="total">${total}</td>
-                            <td style="text-align: center;" class="action-column">
-                                <button class="btn-delete" onclick="deletarPesquisa('${id}')">Deletar</button>
-                            </td>
+                            <td><input type="checkbox" class="table-checkbox"></td>
+                            <td>${pesquisa.nome}</td>
+                            <td>${pesquisa.planejamento}</td>
+                            <td>${pesquisa.execucao}</td>
+                            <td>${pesquisa.analise}</td>
+                            <td>${pesquisa.documentacao}</td>
+                            <td style="color: #2c3e8f; font-weight: 600;">${total}</td>
+                            <td><button class="btn-delete" onclick="deletarPesquisa('${id}')">✕</button></td>
                         </tr>
                     `;
                 }).join('');
-
-                atualizarEstatisticas();
             }
 
-            function atualizarEstatisticas() {
+            function atualizarMetricas() {
                 const pesquisasArray = Object.values(pesquisas);
                 const total = pesquisasArray.length;
-                const totalDias = pesquisasArray.reduce((sum, p) => sum + calcularTotal(p), 0);
-                const media = total > 0 ? Math.round(totalDias / total) : 0;
-                const maior = total > 0 ? Math.max(...pesquisasArray.map(p => calcularTotal(p))) : 0;
+
+                if (total === 0) {
+                    document.getElementById('totalPesquisas').textContent = '0';
+                    document.getElementById('mediaDuracao').textContent = '0';
+                    document.getElementById('subtitlePesquisas').textContent = '0 pesquisas registradas';
+                    return;
+                }
+
+                const somaPlanejamento = pesquisasArray.reduce((sum, p) => sum + p.planejamento, 0);
+                const somaExecucao = pesquisasArray.reduce((sum, p) => sum + p.execucao, 0);
+                const somaAnalise = pesquisasArray.reduce((sum, p) => sum + p.analise, 0);
+                const somaDocumentacao = pesquisasArray.reduce((sum, p) => sum + p.documentacao, 0);
+
+                const mediaPlanejamento = (somaPlanejamento / total).toFixed(1);
+                const mediaExecucao = (somaExecucao / total).toFixed(1);
+                const mediaAnalise = (somaAnalise / total).toFixed(1);
+                const mediaDocumentacao = (somaDocumentacao / total).toFixed(1);
+
+                const totalDias = somaPlanejamento + somaExecucao + somaAnalise + somaDocumentacao;
+                const mediaDias = (totalDias / total).toFixed(1);
 
                 document.getElementById('totalPesquisas').textContent = total;
-                document.getElementById('totalDias').textContent = totalDias;
-                document.getElementById('mediaDias').textContent = media;
-                document.getElementById('maiorPesquisa').textContent = maior;
+                document.getElementById('mediaDuracao').textContent = mediaDias;
+                document.getElementById('subtitlePesquisas').textContent = `${total} pesquisas registradas`;
+
+                // Atualizar barras e valores
+                const maxValor = Math.max(parseFloat(mediaPlanejamento), parseFloat(mediaExecucao), parseFloat(mediaAnalise), parseFloat(mediaDocumentacao));
+
+                document.getElementById('barPlanejamento').style.width = (parseFloat(mediaPlanejamento) / maxValor * 100) + '%';
+                document.getElementById('barExecucao').style.width = (parseFloat(mediaExecucao) / maxValor * 100) + '%';
+                document.getElementById('barAnalise').style.width = (parseFloat(mediaAnalise) / maxValor * 100) + '%';
+                document.getElementById('barDocumentacao').style.width = (parseFloat(mediaDocumentacao) / maxValor * 100) + '%';
+
+                document.getElementById('valuePlanejamento').textContent = mediaPlanejamento + ' d';
+                document.getElementById('valueExecucao').textContent = mediaExecucao + ' d';
+                document.getElementById('valueAnalise').textContent = mediaAnalise + ' d';
+                document.getElementById('valueDocumentacao').textContent = mediaDocumentacao + ' d';
+
+                document.getElementById('sumPlanejamento').textContent = mediaPlanejamento;
+                document.getElementById('sumExecucao').textContent = mediaExecucao;
+                document.getElementById('sumAnalise').textContent = mediaAnalise;
+                document.getElementById('sumDocumentacao').textContent = mediaDocumentacao;
             }
 
             function limparFormulario() {
                 document.getElementById('pesquisaName').value = '';
-                document.getElementById('planejamento').value = '1';
-                document.getElementById('execucao').value = '1';
-                document.getElementById('analise').value = '1';
-                document.getElementById('documentacao').value = '1';
+                document.getElementById('planejamento').value = '0';
+                document.getElementById('execucao').value = '0';
+                document.getElementById('analise').value = '0';
+                document.getElementById('documentacao').value = '0';
                 document.getElementById('pesquisaName').focus();
             }
 
-            function limparTudo() {
-                if (confirm('Tem certeza que deseja deletar TODAS as pesquisas? Esta ação não pode ser desfeita.')) {
-                    pesquisasRef.remove()
-                        .then(() => {
-                            mostrarStatus('✓ Todas as pesquisas foram deletadas!', 'success');
-                            limparFormulario();
-                        })
-                        .catch((error) => {
-                            mostrarStatus('✗ Erro ao limpar: ' + error.message, 'error');
-                        });
-                }
+            function mudarAba(abaId) {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                event.target.classList.add('active');
+                document.getElementById('aba-' + abaId).classList.add('active');
             }
 
             // Inicializar
@@ -545,8 +800,6 @@
 
         } catch (error) {
             console.error('Erro ao inicializar Firebase:', error);
-            document.getElementById('statusMessage').textContent = 'Erro ao conectar ao Firebase';
-            document.getElementById('statusMessage').className = 'status-message error';
         }
     </script>
 </body>
